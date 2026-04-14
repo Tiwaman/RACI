@@ -1,7 +1,7 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Groq from "groq-sdk";
 import { NextRequest, NextResponse } from "next/server";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,7 +35,7 @@ ${tasks.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n")}
 Team Members:
 ${members.map((m: { name: string; role: string }) => `- ${m.name} (${m.role})`).join("\n")}
 
-Respond with ONLY valid JSON in this exact format, no markdown code fences:
+Respond with ONLY valid JSON, no markdown code fences, in this exact format:
 {
   "matrix": [
     {
@@ -47,9 +47,14 @@ Respond with ONLY valid JSON in this exact format, no markdown code fences:
   ]
 }`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const result = await model.generateContent(prompt);
-    const text = result.response.text();
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.3,
+      max_tokens: 4096,
+    });
+
+    const text = completion.choices[0]?.message?.content || "";
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

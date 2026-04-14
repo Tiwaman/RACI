@@ -154,7 +154,7 @@ export default function Home() {
                 AI RACI Assigner
               </h1>
               <p className="text-xs text-slate-500">
-                Powered by Gemini 2.0 Flash
+                Powered by Llama 3.3 70B via Groq
               </p>
             </div>
           </div>

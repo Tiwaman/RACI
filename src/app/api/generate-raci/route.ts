@@ -1,9 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,7 +35,7 @@ ${tasks.map((t: string, i: number) => `${i + 1}. ${t}`).join("\n")}
 Team Members:
 ${members.map((m: { name: string; role: string }) => `- ${m.name} (${m.role})`).join("\n")}
 
-Respond with ONLY valid JSON in this exact format:
+Respond with ONLY valid JSON in this exact format, no markdown code fences:
 {
   "matrix": [
     {
@@ -49,14 +47,9 @@ Respond with ONLY valid JSON in this exact format:
   ]
 }`;
 
-    const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4096,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

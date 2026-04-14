@@ -154,7 +154,7 @@ export default function Home() {
                 AI RACI Assigner
               </h1>
               <p className="text-xs text-slate-500">
-                Paste tasks + team, get a RACI matrix instantly
+                Powered by Gemini 2.0 Flash
               </p>
             </div>
           </div>

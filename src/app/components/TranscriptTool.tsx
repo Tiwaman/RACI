@@ -9,10 +9,7 @@ interface ActionItem {
   dueDate: string | null;
 }
 
-const PRIORITY_COLORS: Record<
-  string,
-  { bg: string; text: string }
-> = {
+const PRIORITY_COLORS: Record<string, { bg: string; text: string }> = {
   High: { bg: "bg-red-100 border-red-300", text: "text-red-700" },
   Medium: { bg: "bg-orange-100 border-orange-300", text: "text-orange-700" },
   Low: { bg: "bg-blue-100 border-blue-300", text: "text-blue-700" },
@@ -32,6 +29,7 @@ export default function TranscriptTool({ onBack }: { onBack: () => void }) {
     return null;
   });
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -40,6 +38,20 @@ export default function TranscriptTool({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     localStorage.setItem("transcript_results", JSON.stringify(actionItems));
   }, [actionItems]);
+
+  const estimateChunks = (text: string): number => {
+    const lines = text.split("\n");
+    let count = 1;
+    let current = 0;
+    for (const line of lines) {
+      if (current + line.length + 1 > 6000 && current > 0) {
+        count++;
+        current = 0;
+      }
+      current += line.length + 1;
+    }
+    return count;
+  };
 
   const handleAnalyze = async () => {
     setError("");
@@ -50,7 +62,15 @@ export default function TranscriptTool({ onBack }: { onBack: () => void }) {
       return;
     }
 
+    const chunks = estimateChunks(transcriptText);
+
     setLoading(true);
+    setProgress(
+      chunks > 1
+        ? `Processing large transcript (${chunks} parts)...`
+        : "Analyzing transcript..."
+    );
+
     try {
       const res = await fetch("/api/analyze-transcript", {
         method: "POST",
@@ -59,9 +79,12 @@ export default function TranscriptTool({ onBack }: { onBack: () => void }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Analysis failed");
+
       setActionItems(data.actionItems);
+      setProgress("");
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Something went wrong");
+      setProgress("");
     } finally {
       setLoading(false);
     }
@@ -91,6 +114,11 @@ export default function TranscriptTool({ onBack }: { onBack: () => void }) {
     URL.revokeObjectURL(url);
   };
 
+  const charCount = transcriptText.length;
+  const chunkEstimate = transcriptText.trim()
+    ? estimateChunks(transcriptText)
+    : 0;
+
   return (
     <div className="max-w-6xl mx-auto px-6 py-8">
       {/* Back button */}
@@ -115,14 +143,27 @@ export default function TranscriptTool({ onBack }: { onBack: () => void }) {
       </button>
 
       {/* Input Section */}
-      {!actionItems && (
+      {!actionItems && !loading && (
         <div className="max-w-2xl mx-auto space-y-6">
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-            <label className="block text-sm font-semibold text-slate-800 mb-2">
-              Meeting Transcript
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-slate-800">
+                Meeting Transcript
+              </label>
+              {charCount > 0 && (
+                <span className="text-xs text-slate-400">
+                  {charCount.toLocaleString()} chars
+                  {chunkEstimate > 1 && (
+                    <span className="text-violet-500 ml-1">
+                      ({chunkEstimate} parts)
+                    </span>
+                  )}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-slate-500 mb-3">
-              Paste your meeting notes, transcript, or minutes below.
+              Paste your meeting notes, transcript, or minutes below. Long
+              transcripts are automatically split and processed in parts.
             </p>
             <textarea
               value={transcriptText}
@@ -144,33 +185,52 @@ export default function TranscriptTool({ onBack }: { onBack: () => void }) {
             disabled={loading}
             className="w-full py-3 px-6 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-semibold rounded-xl hover:from-violet-700 hover:to-indigo-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-violet-200 cursor-pointer"
           >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg
-                  className="animate-spin h-5 w-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                  />
-                </svg>
-                Analyzing transcript...
-              </span>
-            ) : (
-              "Extract Action Items"
-            )}
+            Extract Action Items
           </button>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <div className="max-w-md mx-auto text-center py-20">
+          <div className="relative mx-auto w-16 h-16 mb-6">
+            <svg
+              className="animate-spin w-16 h-16 text-violet-500"
+              viewBox="0 0 24 24"
+              fill="none"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="3"
+              />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+              />
+            </svg>
+          </div>
+          <h3 className="text-lg font-semibold text-slate-800 mb-2">
+            {progress}
+          </h3>
+          <p className="text-sm text-slate-500">
+            {chunkEstimate > 1
+              ? `Your transcript is being processed in ${chunkEstimate} parts to stay within API limits. This may take a moment.`
+              : "AI is reading through your meeting notes..."}
+          </p>
+
+          {chunkEstimate > 1 && (
+            <div className="mt-6 w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full animate-pulse"
+                style={{ width: "60%" }}
+              />
+            </div>
+          )}
         </div>
       )}
 

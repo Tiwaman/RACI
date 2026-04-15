@@ -4,7 +4,7 @@ const MODELS = [
   "meta-llama/llama-3.3-70b-instruct:free",
   "qwen/qwen3-70b-instruct:free",
   "google/gemini-2.0-flash-exp:free",
-  "mistralai/mistral-small-3.1-24b-instruct:free",
+  "deepseek/deepseek-chat-v3-0324:free",
 ];
 
 async function callModel(
@@ -30,7 +30,7 @@ async function callModel(
     }),
   });
 
-  if (res.status === 429) {
+  if (res.status === 429 || res.status === 404 || res.status === 503) {
     return { ok: false, text: "" };
   }
 

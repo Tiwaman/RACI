@@ -1,7 +1,5 @@
-import Groq from "groq-sdk";
+import { llmCall, parseJSON } from "../../lib/openrouter";
 import { NextRequest, NextResponse } from "next/server";
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // --- Prompts ---
 
@@ -73,29 +71,6 @@ function splitIntoChunks(text: string, maxChars: number = 6000): string[] {
   return chunks;
 }
 
-async function llmCall(system: string, user: string, maxTokens = 4096) {
-  const completion = await groq.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
-    messages: [
-      { role: "system", content: system },
-      { role: "user", content: user },
-    ],
-    temperature: 0.3,
-    max_tokens: maxTokens,
-  });
-  return completion.choices[0]?.message?.content || "";
-}
-
-function parseJSON(text: string) {
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) return null;
-  try {
-    return JSON.parse(match[0]);
-  } catch {
-    return null;
-  }
-}
-
 // --- Categorize ---
 
 async function categorizeTranscript(transcript: string) {
@@ -110,7 +85,6 @@ async function categorizeTranscript(transcript: string) {
     return data?.categories || [];
   }
 
-  // Multi-chunk: categorize each, then merge
   const allCategories: { name: string; summary: string; estimatedItems: number }[] = [];
   for (let i = 0; i < chunks.length; i++) {
     const text = await llmCall(
@@ -119,11 +93,11 @@ async function categorizeTranscript(transcript: string) {
     );
     const data = parseJSON(text);
     if (data?.categories) allCategories.push(...data.categories);
-    if (i < chunks.length - 1) await new Promise((r) => setTimeout(r, 2000));
+    if (i < chunks.length - 1) await new Promise((r) => setTimeout(r, 1000));
   }
 
-  // Merge duplicates via LLM
-  await new Promise((r) => setTimeout(r, 2000));
+  // Merge duplicates
+  await new Promise((r) => setTimeout(r, 1000));
   const mergeText = await llmCall(
     `You are given a list of categories extracted from different parts of a meeting. Merge duplicate or overlapping categories, combine their summaries, and sum their estimated items. Return 2-8 final categories.
 
@@ -153,10 +127,9 @@ async function extractActions(transcript: string, categories: string[]) {
     );
     const data = parseJSON(text);
     if (data?.actionItems) allItems.push(...data.actionItems);
-    if (i < chunks.length - 1) await new Promise((r) => setTimeout(r, 2000));
+    if (i < chunks.length - 1) await new Promise((r) => setTimeout(r, 1000));
   }
 
-  // Deduplicate
   const seen = new Set<string>();
   return allItems.filter((item) => {
     const key = item.task.toLowerCase().trim();

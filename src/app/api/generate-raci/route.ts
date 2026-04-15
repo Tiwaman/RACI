@@ -1,7 +1,5 @@
-import Groq from "groq-sdk";
+import { llmCall, parseJSON } from "../../lib/openrouter";
 import { NextRequest, NextResponse } from "next/server";
-
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,24 +45,16 @@ Respond with ONLY valid JSON, no markdown code fences, in this exact format:
   ]
 }`;
 
-    const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.3,
-      max_tokens: 4096,
-    });
+    const text = await llmCall("", prompt);
 
-    const text = completion.choices[0]?.message?.content || "";
-
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
+    const data = parseJSON(text);
+    if (!data) {
       return NextResponse.json(
         { error: "Failed to parse AI response." },
         { status: 500 }
       );
     }
 
-    const data = JSON.parse(jsonMatch[0]);
     return NextResponse.json(data);
   } catch (error: unknown) {
     const message =

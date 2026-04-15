@@ -59,6 +59,13 @@ export default function Home() {
     }
     return [];
   });
+  const [memberRoles, setMemberRoles] = useState<Record<string, string>>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("raci_memberRoles");
+      return saved ? JSON.parse(saved) : {};
+    }
+    return {};
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tooltip, setTooltip] = useState<{
@@ -72,6 +79,7 @@ export default function Home() {
   useEffect(() => { localStorage.setItem("raci_members", membersText); }, [membersText]);
   useEffect(() => { localStorage.setItem("raci_matrix", JSON.stringify(matrix)); }, [matrix]);
   useEffect(() => { localStorage.setItem("raci_memberNames", JSON.stringify(memberNames)); }, [memberNames]);
+  useEffect(() => { localStorage.setItem("raci_memberRoles", JSON.stringify(memberRoles)); }, [memberRoles]);
 
   const parseMember = (
     line: string
@@ -124,6 +132,9 @@ export default function Home() {
       if (!res.ok) throw new Error(data.error || "Generation failed");
       setMatrix(data.matrix);
       setMemberNames(members.map((m) => m.name));
+      const roles: Record<string, string> = {};
+      members.forEach((m) => { roles[m.name] = m.role; });
+      setMemberRoles(roles);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -316,9 +327,12 @@ export default function Home() {
                     {memberNames.map((name) => (
                       <th
                         key={name}
-                        className="px-4 py-3 font-semibold text-slate-700 text-center min-w-[120px]"
+                        className="px-4 py-3 text-center min-w-[120px]"
                       >
-                        {name}
+                        <div className="font-semibold text-slate-700">{name}</div>
+                        {memberRoles[name] && (
+                          <div className="text-[11px] font-normal text-slate-400 mt-0.5">{memberRoles[name]}</div>
+                        )}
                       </th>
                     ))}
                   </tr>

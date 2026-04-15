@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI RACI Assigner",
-  description: "Paste your tasks and team — AI generates a complete RACI matrix instantly.",
+  title: "AI Project Tools",
+  description: "AI-powered RACI matrix generator and meeting transcript analyzer. Paste your data, get instant results.",
 };
 
 export default function RootLayout({

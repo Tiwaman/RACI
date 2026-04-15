@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface Assignment {
   role: "R" | "A" | "C" | "I" | null;
@@ -37,10 +37,28 @@ const ROLE_COLORS: Record<string, { bg: string; text: string; label: string }> =
   };
 
 export default function Home() {
-  const [tasksText, setTasksText] = useState("");
-  const [membersText, setMembersText] = useState("");
-  const [matrix, setMatrix] = useState<MatrixRow[] | null>(null);
-  const [memberNames, setMemberNames] = useState<string[]>([]);
+  const [tasksText, setTasksText] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("raci_tasks") || "";
+    return "";
+  });
+  const [membersText, setMembersText] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("raci_members") || "";
+    return "";
+  });
+  const [matrix, setMatrix] = useState<MatrixRow[] | null>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("raci_matrix");
+      return saved ? JSON.parse(saved) : null;
+    }
+    return null;
+  });
+  const [memberNames, setMemberNames] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("raci_memberNames");
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [tooltip, setTooltip] = useState<{
@@ -49,6 +67,11 @@ export default function Home() {
     y: number;
   } | null>(null);
   const tableRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { localStorage.setItem("raci_tasks", tasksText); }, [tasksText]);
+  useEffect(() => { localStorage.setItem("raci_members", membersText); }, [membersText]);
+  useEffect(() => { localStorage.setItem("raci_matrix", JSON.stringify(matrix)); }, [matrix]);
+  useEffect(() => { localStorage.setItem("raci_memberNames", JSON.stringify(memberNames)); }, [memberNames]);
 
   const parseMember = (
     line: string
